@@ -13,7 +13,7 @@ from .config import resolve
 from .reddit import RedditClient, Story, find_story
 from .state import State
 from .text import prepare_for_speech
-from .uploaders import get_uploader
+from .uploaders import get_uploader, platforms_from_config
 
 log = logging.getLogger(__name__)
 
@@ -22,6 +22,43 @@ MAX_STORY_ATTEMPTS = 5
 
 class StoryTooLong(Exception):
     pass
+
+
+class PartialUploadError(RuntimeError):
+    """Mindestens eine Plattform hat geklappt, mindestens eine nicht."""
+
+
+def _publish(uploaders: dict, out: Path, duration: float, story: Story,
+             ucfg: dict) -> tuple[dict, dict]:
+    results, errors = {}, {}
+    for name, uploader in uploaders.items():
+        pcfg = ucfg.get(name, {})
+        try:
+            if name == "youtube":
+                results[name] = uploader.upload(
+                    out,
+                    title=_fmt(pcfg.get("title_template", "{title} #shorts"), story),
+                    description=_fmt(pcfg.get("description_template", ""), story),
+                    tags=pcfg.get("tags", []),
+                    privacy=pcfg.get("privacy", "public"),
+                    category_id=str(pcfg.get("category_id", "24")),
+                    made_for_kids=bool(pcfg.get("made_for_kids", False)),
+                )
+            elif name == "tiktok":
+                results[name] = uploader.upload(
+                    out,
+                    caption=_fmt(pcfg.get("caption_template", "{title}"), story),
+                    privacy=pcfg.get("privacy", "PUBLIC_TO_EVERYONE"),
+                    duration=duration,
+                    disable_comment=bool(pcfg.get("disable_comment", False)),
+                    disable_duet=bool(pcfg.get("disable_duet", False)),
+                    disable_stitch=bool(pcfg.get("disable_stitch", False)),
+                )
+            log.info("%s: %s", name, results[name])
+        except Exception as exc:  # andere Plattformen trotzdem versuchen
+            log.exception("Upload zu %s fehlgeschlagen", name)
+            errors[name] = str(exc)
+    return results, errors
 
 
 def _ensure_backgrounds(bg_dir: Path) -> None:
@@ -102,7 +139,10 @@ def run_once(cfg: dict, *, upload: bool = True, dry_run: bool = False) -> Path |
     vcfg, ucfg = cfg["video"], cfg.get("upload", {})
     _ensure_backgrounds(resolve(vcfg.get("backgrounds_dir", "assets/backgrounds")))
 
-    uploader = get_uploader(ucfg.get("platform", "none")) if upload and not dry_run else None
+    uploaders = {}
+    if upload and not dry_run:
+        # Zugangsdaten vor dem Rendern prüfen -> Fehler fallen sofort auf
+        uploaders = {name: get_uploader(name) for name in platforms_from_config(ucfg)}
     client = RedditClient()
 
     skipped: set[str] = set()
@@ -116,7 +156,7 @@ def run_once(cfg: dict, *, upload: bool = True, dry_run: bool = False) -> Path |
 
         try:
             with tempfile.TemporaryDirectory(prefix="rvb_") as tmp:
-                out, _ = make_video(story, cfg, Path(tmp))
+                out, duration = make_video(story, cfg, Path(tmp))
         except StoryTooLong as exc:
             log.info("Story zu lang fürs Video (%s) – nächste", exc)
             skipped.add(story.id)
@@ -125,23 +165,19 @@ def run_once(cfg: dict, *, upload: bool = True, dry_run: bool = False) -> Path |
             continue
 
         log.info("Video fertig: %s", out)
-        if dry_run or uploader is None:
+        if dry_run or not uploaders:
             if not dry_run:
                 state.mark_used(story.id, subreddit=story.subreddit, title=story.title, video=str(out))
             return out
 
-        url = uploader.upload(
-            out,
-            title=_fmt(ucfg.get("title_template", "{title}"), story),
-            description=_fmt(ucfg.get("description_template", ""), story),
-            tags=ucfg.get("tags", []),
-            privacy=ucfg.get("privacy", "public"),
-            category_id=str(ucfg.get("category_id", "24")),
-            made_for_kids=bool(ucfg.get("made_for_kids", False)),
-        )
-        state.mark_used(story.id, subreddit=story.subreddit, title=story.title, video=url)
+        results, errors = _publish(uploaders, out, duration, story, ucfg)
+        if not results:
+            raise RuntimeError(f"Upload auf allen Plattformen fehlgeschlagen: {errors}")
+        state.mark_used(story.id, subreddit=story.subreddit, title=story.title, uploads=results)
         if ucfg.get("delete_after_upload", True):
             out.unlink(missing_ok=True)
+        if errors:
+            raise PartialUploadError(f"Teilweise fehlgeschlagen: {errors} (erfolgreich: {results})")
         return out
     log.error("Nach %d Versuchen keine passende Story", MAX_STORY_ATTEMPTS)
     return None

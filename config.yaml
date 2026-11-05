@@ -54,18 +54,31 @@ subtitles:
   margin_v: 0          # 0 = vertikal mittig
 
 upload:
-  platform: youtube    # youtube | none (nur rendern)
-  privacy: public      # public | unlisted | private
-  category_id: "24"    # 24 = Entertainment
-  made_for_kids: false
-  title_template: "{title} #shorts #reddit"
-  description_template: |
-    r/{subreddit} story 📖
-
-    Original post by u/{author}: {url}
-
-    #reddit #redditstories #askreddit #storytime #shorts
-  tags: ["reddit", "reddit stories", "storytime", "shorts", "aita"]
+  # Wohin veröffentlicht wird. [] = nur rendern
+  platforms: [youtube, tiktok]
   delete_after_upload: true
+
+  youtube:
+    # Videos im Hochformat und <= 180 s erkennt YouTube automatisch als Shorts
+    privacy: public      # public | unlisted | private
+    category_id: "24"    # 24 = Entertainment
+    made_for_kids: false
+    title_template: "{title} #shorts #reddit"
+    description_template: |
+      r/{subreddit} story 📖
+
+      Original post by u/{author}: {url}
+
+      #shorts #reddit #redditstories #storytime
+    tags: ["reddit", "reddit stories", "storytime", "shorts", "aita"]
+
+  tiktok:
+    # PUBLIC_TO_EVERYONE | MUTUAL_FOLLOW_FRIENDS | FOLLOWER_OF_CREATOR | SELF_ONLY
+    # Ohne TikTok-App-Audit ist nur SELF_ONLY (privat) möglich – der Bot fällt dann automatisch darauf zurück.
+    privacy: PUBLIC_TO_EVERYONE
+    caption_template: "{title} 😳 #reddit #redditstories #storytime #fyp"
+    disable_comment: false
+    disable_duet: false
+    disable_stitch: false
 
 state_file: data/used_posts.json

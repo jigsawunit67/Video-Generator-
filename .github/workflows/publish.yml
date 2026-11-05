@@ -44,6 +44,9 @@ jobs:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
+          TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+          TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
           BACKGROUND_URLS: ${{ secrets.BACKGROUND_URLS }}
         run: |
           if [ "${{ inputs.dry_run }}" = "true" ]; then
@@ -60,7 +63,8 @@ jobs:
           path: output/*.mp4
 
       - name: Liste benutzter Posts speichern
-        if: ${{ !inputs.dry_run }}
+        # auch wenn nur eine Plattform geklappt hat -> keine doppelten Posts
+        if: ${{ !cancelled() && !inputs.dry_run }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
