@@ -72,13 +72,18 @@ def render(*, narration: Path, ass: Path, out: Path, duration: float, cfg: dict,
 
     cmd += ["-i", str(narration.resolve())]
     filters = [f"{vsrc},ass={ass.name}[v]"]
+    # Stimme auf Social-Media-Lautstärke (-14 LUFS) bringen und in Stereo ausgeben –
+    # Mono-Ton wird von manchen Handys/Playern nur auf einer Seite oder gar nicht abgespielt.
+    lufs = cfg.get("loudness_lufs", -14)
+    voice = f"[1:a]loudnorm=I={lufs}:TP=-1.5:LRA=11,aresample=44100,aformat=channel_layouts=stereo"
     if music:
         cmd += ["-stream_loop", "-1", "-i", str(music.resolve())]
         vol = cfg.get("music_volume", 0.08)
-        filters.append(f"[2:a]volume={vol}[m];[1:a][m]amix=inputs=2:duration=first:normalize=0[a]")
-        amap = "[a]"
+        filters.append(f"{voice}[n];[2:a]aformat=channel_layouts=stereo,volume={vol}[m];"
+                       f"[n][m]amix=inputs=2:duration=first:normalize=0,apad[a]")
     else:
-        amap = "1:a"
+        filters.append(f"{voice},apad[a]")
+    amap = "[a]"
 
     cmd += [
         "-filter_complex", ";".join(filters),
@@ -86,7 +91,7 @@ def render(*, narration: Path, ass: Path, out: Path, duration: float, cfg: dict,
         "-t", f"{duration:.2f}",
         "-c:v", "libx264", "-preset", cfg.get("preset", "veryfast"), "-crf", str(cfg.get("crf", 23)),
         "-pix_fmt", "yuv420p", "-r", str(fps),
-        "-c:a", "aac", "-b:a", "192k", "-ar", "44100",
+        "-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-ac", "2",
         "-movflags", "+faststart",
         str(out.resolve()),
     ]
