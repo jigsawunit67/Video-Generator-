@@ -6,3 +6,4 @@ output/
 client_secret*.json
 token*.json
 .tiktok_refresh_token
+/Testvideo*.mp4
