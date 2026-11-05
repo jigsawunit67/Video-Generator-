@@ -201,6 +201,22 @@ def run_once(cfg: dict, *, upload: bool = True, dry_run: bool = False) -> Path |
     return None
 
 
+def post_file(cfg: dict, path: Path, caption: str, platforms: list[str] | None = None) -> dict:
+    """Lädt eine fertige Videodatei hoch (ohne Reddit), z.B. für Tests oder das TikTok-Demo-Video."""
+    ucfg = cfg.get("upload", {})
+    names = platforms or platforms_from_config(ucfg)
+    if not names:
+        raise SystemExit("Keine Plattform angegeben (--platform tiktok|youtube)")
+    duration = video.probe_duration(path)
+    story = Story(id="file", subreddit="reddit", title=caption, body="", author="unknown",
+                  url="", score=0)
+    uploaders = {n: get_uploader(n) for n in names}
+    results, errors = _publish(uploaders, path, duration, story, ucfg)
+    if errors:
+        log.error("Fehler: %s", errors)
+    return results
+
+
 def check_tools() -> None:
     for tool in ("ffmpeg", "ffprobe"):
         if shutil.which(tool) is None:

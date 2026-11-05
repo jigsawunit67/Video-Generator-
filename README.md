@@ -101,6 +101,13 @@ Danach erstellst du ein Video und lädst es hoch mit:
 python -m reddit_video_bot run
 ```
 
+## 5d. Ohne eigenen PC: GitHub Codespaces (Tablet)
+
+1. Im Repo auf **Code → Codespaces → Create codespace** tippen. Nach 2–3 Minuten gibt es im Browser ein Terminal mit Python und ffmpeg.
+2. `.env` im Editor öffnen und die TikTok-Werte eintragen (die Datei bleibt privat, sie wird nicht hochgeladen).
+3. `python scripts/tiktok_auth.py --manual` ausführen, die angezeigte Adresse öffnen, bei TikTok erlauben, danach die komplette Adresse aus der Adressleiste (beginnt mit `http://localhost:8080/callback/?code=`) ins Terminal einfügen.
+4. Fertige Videodatei hochladen: `python -m reddit_video_bot post-file video.mp4 --platform tiktok --caption "Test"`
+
 ## 6. Automatisch 2× pro Tag veröffentlichen
 
 ### Variante A: GitHub Actions (empfohlen, dein PC muss nicht laufen)

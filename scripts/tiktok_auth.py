@@ -10,6 +10,7 @@
 7. Den ausgegebenen TIKTOK_REFRESH_TOKEN in .env bzw. als GitHub-Secret eintragen
    (gültig 365 Tage).
 """
+import argparse
 import hashlib
 import http.server
 import os
@@ -30,6 +31,10 @@ SCOPES = "user.info.basic,video.publish"
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--manual", action="store_true",
+                    help="Für Tablet/Codespaces: Browser-Adresse nach der Anmeldung selbst einfügen")
+    args = ap.parse_args()
     load_config()
     key, secret = os.getenv("TIKTOK_CLIENT_KEY"), os.getenv("TIKTOK_CLIENT_SECRET")
     if not key or not secret:
@@ -51,23 +56,36 @@ def main() -> None:
 
     result: dict = {}
 
-    class Handler(http.server.BaseHTTPRequestHandler):
-        def do_GET(self):  # noqa: N802
-            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
-            result.update({k: v[0] for k, v in q.items()})
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.end_headers()
-            self.wfile.write("<h2>Fertig – du kannst dieses Fenster schließen.</h2>".encode())
+    if args.manual:
+        print("1) Öffne diese Adresse im Browser und melde dich bei TikTok an:\n")
+        print(auth_url, "\n")
+        print("2) Nach dem Erlauben zeigt der Browser eine Fehlerseite (localhost nicht erreichbar).")
+        print("   Das ist normal! Kopiere die KOMPLETTE Adresse aus der Adressleiste")
+        print("   (sie beginnt mit http://localhost:8080/callback/?code=...)\n")
+        pasted = input("3) Hier einfügen und Enter drücken: ").strip()
+        q = urllib.parse.parse_qs(urllib.parse.urlparse(pasted).query)
+        result.update({k: v[0] for k, v in q.items()})
+        if "code" not in result and "error" not in result:
+            sys.exit("In dieser Adresse steckt kein 'code'. Bitte die komplette Adresse kopieren.")
+    else:
 
-        def log_message(self, *args):
-            pass
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):  # noqa: N802
+                q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                result.update({k: v[0] for k, v in q.items()})
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.end_headers()
+                self.wfile.write("<h2>Fertig – du kannst dieses Fenster schließen.</h2>".encode())
 
-    print("Öffne im Browser (falls nicht automatisch):\n", auth_url, "\n")
-    webbrowser.open(auth_url)
-    with http.server.HTTPServer(("localhost", PORT), Handler) as srv:
-        while "code" not in result and "error" not in result:
-            srv.handle_request()
+            def log_message(self, *args):
+                pass
+
+        print("Öffne im Browser (falls nicht automatisch):\n", auth_url, "\n")
+        webbrowser.open(auth_url)
+        with http.server.HTTPServer(("localhost", PORT), Handler) as srv:
+            while "code" not in result and "error" not in result:
+                srv.handle_request()
 
     if "error" in result:
         sys.exit(f"TikTok-Fehler: {result}")

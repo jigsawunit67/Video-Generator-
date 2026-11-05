@@ -13,7 +13,7 @@ import sys
 import time
 
 from .config import load_config
-from .pipeline import check_tools, run_once
+from .pipeline import check_tools, post_file, run_once
 
 
 def _schedule(cfg: dict, times: list[str], upload: bool) -> None:
@@ -42,6 +42,12 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--dry-run", action="store_true", help="nicht hochladen, Story nicht als benutzt markieren")
     r.add_argument("--no-upload", action="store_true", help="erstellen und als benutzt markieren, nicht hochladen")
 
+    f = sub.add_parser("post-file", help="eine fertige Videodatei hochladen (ohne Reddit)")
+    f.add_argument("file")
+    f.add_argument("--caption", default="Reddit story")
+    f.add_argument("--platform", action="append", choices=["tiktok", "youtube"],
+                   help="Zielplattform (mehrfach möglich, Standard: aus config.yaml)")
+
     s = sub.add_parser("schedule", help="dauerhaft laufen und zu festen Zeiten posten")
     s.add_argument("--times", nargs="+", default=["12:00", "19:00"], help="Uhrzeiten HH:MM (Standard: 12:00 19:00)")
     s.add_argument("--no-upload", action="store_true")
@@ -52,6 +58,12 @@ def main(argv: list[str] | None = None) -> int:
     check_tools()
     cfg = load_config(args.config)
 
+    if args.cmd == "post-file":
+        from pathlib import Path
+
+        res = post_file(cfg, Path(args.file), args.caption, args.platform)
+        print(res)
+        return 0 if res else 1
     if args.cmd == "run":
         out = run_once(cfg, upload=not args.no_upload, dry_run=args.dry_run)
         return 0 if out else 1
