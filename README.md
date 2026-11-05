@@ -108,6 +108,8 @@ python -m reddit_video_bot run
 3. `python scripts/tiktok_auth.py --manual` ausführen, die angezeigte Adresse öffnen, bei TikTok erlauben, danach die komplette Adresse aus der Adressleiste (beginnt mit `http://localhost:8080/callback/?code=`) ins Terminal einfügen.
 4. Fertige Videodatei hochladen: `python -m reddit_video_bot post-file video.mp4 --platform tiktok --caption "Test"`
 
+**YouTube ohne eigenen PC:** In Codespaces `YOUTUBE_CLIENT_ID` und `YOUTUBE_CLIENT_SECRET` in `.env` eintragen und `python scripts/youtube_auth.py --manual` ausführen. Ablauf wie bei TikTok: Adresse aus `auth_url.txt` öffnen, anmelden, die Adresse der Fehlerseite ins Terminal einfügen.
+
 ## 6. Automatisch 2× pro Tag veröffentlichen
 
 ### Variante A: GitHub Actions (empfohlen, dein PC muss nicht laufen)
