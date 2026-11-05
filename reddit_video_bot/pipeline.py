@@ -201,6 +201,28 @@ def run_once(cfg: dict, *, upload: bool = True, dry_run: bool = False) -> Path |
     return None
 
 
+DEMO_STORY = Story(
+    id="demo", subreddit="AmItheAsshole",
+    title="AITA for putting ghost pepper in my brownies after my roommate kept stealing my food?",
+    body=("So this happened last week and I still can't believe it. My (24F) roommate (26F) has been "
+          "borrowing my food for months. Not just a snack here and there, I mean entire meals I "
+          "meal-prepped on Sunday.\nI asked her nicely. Twice. She said she'd stop. She didn't.\n"
+          "So I did what any reasonable person would do. I baked a batch of brownies, labeled the box "
+          "with my name in huge letters, and added an absolutely ridiculous amount of ghost pepper.\n"
+          "Two days later I hear screaming from the kitchen. She's standing there with a glass of milk, "
+          "crying, telling me I poisoned her. I just pointed at the label. My name. In big letters.\n"
+          "She called me a psycho, and now half our friend group thinks I went too far. The other half "
+          "says she had it coming. AITA?"),
+    author="demo", url="https://www.reddit.com/r/AmItheAsshole/", score=0)
+
+
+def make_demo(cfg: dict) -> Path:
+    """Beispielvideo aus einer eingebauten Story (ohne Reddit)."""
+    with tempfile.TemporaryDirectory(prefix="rvb_") as tmp:
+        out, _ = make_video(DEMO_STORY, cfg, Path(tmp))
+    return out
+
+
 def post_file(cfg: dict, path: Path, caption: str, platforms: list[str] | None = None) -> dict:
     """Lädt eine fertige Videodatei hoch (ohne Reddit), z.B. für Tests oder das TikTok-Demo-Video."""
     ucfg = cfg.get("upload", {})

@@ -13,7 +13,7 @@ import sys
 import time
 
 from .config import load_config
-from .pipeline import check_tools, post_file, run_once
+from .pipeline import check_tools, make_demo, post_file, run_once
 
 
 def _schedule(cfg: dict, times: list[str], upload: bool) -> None:
@@ -42,6 +42,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--dry-run", action="store_true", help="nicht hochladen, Story nicht als benutzt markieren")
     r.add_argument("--no-upload", action="store_true", help="erstellen und als benutzt markieren, nicht hochladen")
 
+    sub.add_parser("demo", help="Beispielvideo aus eingebauter Story erstellen (ohne Reddit)")
+
     f = sub.add_parser("post-file", help="eine fertige Videodatei hochladen (ohne Reddit)")
     f.add_argument("file")
     f.add_argument("--caption", default="Reddit story")
@@ -58,6 +60,9 @@ def main(argv: list[str] | None = None) -> int:
     check_tools()
     cfg = load_config(args.config)
 
+    if args.cmd == "demo":
+        print(make_demo(cfg))
+        return 0
     if args.cmd == "post-file":
         from pathlib import Path
 
