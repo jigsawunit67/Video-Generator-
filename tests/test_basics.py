@@ -87,3 +87,25 @@ class StateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VoiceAndPauseTests(unittest.TestCase):
+    def test_voice_never_repeats(self):
+        from reddit_video_bot.pipeline import pick_voice
+        cfg = {"voices": ["a", "b", "c"], "voice": "x"}
+        for _ in range(50):
+            self.assertNotEqual(pick_voice(cfg, "a"), "a")
+        self.assertEqual(pick_voice({"voice": "solo"}, "solo"), "solo")
+
+    def test_tighten_pauses_shifts_timestamps(self):
+        import subprocess
+        from reddit_video_bot import video
+        with tempfile.TemporaryDirectory() as d:
+            src, dst = Path(d) / "in.wav", Path(d) / "out.wav"
+            subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
+                            "-t", "6", str(src)], check=True)
+            words = [Word("a", 0.5, 1.0), Word("b", 3.0, 3.5), Word("c", 3.6, 4.0)]  # 2 s Pause nach "a"
+            out = video.tighten_pauses(src, dst, words, max_gap=0.2)
+            self.assertAlmostEqual(out[1].start - out[0].end, 0.2, places=2)   # Pause gekürzt
+            self.assertAlmostEqual(out[2].start - out[1].end, 0.1, places=2)   # kurze Lücke bleibt
+            self.assertAlmostEqual(video.probe_duration(dst), 4.0 - 1.8 + 0.12, delta=0.05)

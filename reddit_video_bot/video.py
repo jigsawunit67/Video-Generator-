@@ -6,6 +6,8 @@ import random
 import subprocess
 from pathlib import Path
 
+from .tts import Word
+
 log = logging.getLogger(__name__)
 
 VIDEO_EXT = {".mp4", ".mov", ".mkv", ".webm", ".m4v"}
@@ -27,7 +29,45 @@ def probe_duration(path: Path) -> float:
     return float(json.loads(out)["format"]["duration"])
 
 
-def build_narration(parts: list[Path], out: Path, gap: float = 0.35) -> list[float]:
+def tighten_pauses(src: Path, dst: Path, words: list[Word], max_gap: float,
+                   tail: float = 0.12) -> list[Word]:
+    """Schneidet zu lange Pausen zwischen den Wörtern aus dem Ton heraus.
+
+    Jede Lücke, die länger als `max_gap` Sekunden ist, wird auf `max_gap` gekürzt
+    (in der Mitte der Stille geschnitten, also ohne Knacken). Die Wort-Zeitstempel
+    werden entsprechend verschoben, damit die Untertitel synchron bleiben.
+    """
+    cuts: list[tuple[float, float]] = []
+    for prev, nxt in zip(words, words[1:]):
+        excess = (nxt.start - prev.end) - max_gap
+        if excess > 0.02:
+            mid = (prev.end + nxt.start) / 2
+            cuts.append((mid - excess / 2, mid + excess / 2))
+    end = min(probe_duration(src), words[-1].end + tail)
+
+    # Abschnitte, die behalten werden
+    bounds = [0.0]
+    for a, b in cuts:
+        bounds += [a, b]
+    bounds.append(end)
+    keep = list(zip(bounds[0::2], bounds[1::2]))
+
+    filters = [f"[0:a]atrim=start={a:.4f}:end={b:.4f},asetpts=PTS-STARTPTS[s{i}]"
+               for i, (a, b) in enumerate(keep)]
+    filters.append("".join(f"[s{i}]" for i in range(len(keep))) +
+                   f"concat=n={len(keep)}:v=0:a=1[out]")
+    script = dst.with_suffix(".filter.txt")
+    script.write_text(";\n".join(filters), encoding="utf-8")
+    _run(["ffmpeg", "-y", "-i", str(src), "-filter_complex_script", str(script),
+          "-map", "[out]", "-c:a", "pcm_s16le", str(dst)])
+
+    def shift(t: float) -> float:
+        return t - sum(b - a for a, b in cuts if b <= t)
+
+    return [Word(w.text, shift(w.start), shift(w.end)) for w in words]
+
+
+def build_narration(parts: list[Path], out: Path, gap: float = 0.2) -> list[float]:
     """Mehrere MP3s mit kurzer Pause verbinden. Gibt die Startzeit jedes Teils zurück."""
     starts, t = [], 0.0
     inputs, filters = [], []

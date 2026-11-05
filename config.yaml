@@ -23,11 +23,27 @@ reddit:
   blocked_words: ["update:", "[meta]", "suicide", "self-harm"]
 
 tts:
-  # Stimmen auflisten:  edge-tts --list-voices
-  # Englische Storys -> englische Stimme. Für deutsche Subreddits z.B. de-DE-ConradNeural / de-DE-KatjaNeural
-  voice: en-US-ChristopherNeural
+  # Pro Video wird zufällig eine dieser Stimmen gewählt (nie zweimal hintereinander dieselbe).
+  # Alle Stimmen anzeigen:  edge-tts --list-voices
+  # Englische Storys -> englische Stimmen. Für Deutsch z.B. de-DE-ConradNeural, de-DE-KatjaNeural
+  voices:
+    - en-US-ChristopherNeural
+    - en-US-GuyNeural
+    - en-US-EricNeural
+    - en-US-AndrewNeural
+    - en-US-BrianNeural
+    - en-US-JennyNeural
+    - en-US-AriaNeural
+    - en-US-AvaNeural
+    - en-US-EmmaNeural
+    - en-GB-RyanNeural
+    - en-GB-SoniaNeural
+    - en-AU-NatashaNeural
   rate: "+15%"         # schneller = mehr Retention
   pitch: "+0Hz"
+  # Längste erlaubte Pause zwischen zwei Wörtern in Sekunden. Längere Pausen werden herausgeschnitten.
+  # Kleiner = flotter (0.10), größer = ruhiger (0.25). 0.14 klingt wie schnelles, natürliches Erzählen.
+  max_pause: 0.14
   read_title: true     # Titel am Anfang vorlesen
 
 video:

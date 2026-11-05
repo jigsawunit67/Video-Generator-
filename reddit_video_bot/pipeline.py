@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import random
 import shutil
 import tempfile
 from pathlib import Path
@@ -79,19 +80,33 @@ def _ensure_backgrounds(bg_dir: Path) -> None:
                     fh.write(chunk)
 
 
-def make_video(story: Story, cfg: dict, workdir: Path) -> tuple[Path, float]:
+def pick_voice(tcfg: dict, last: str | None = None) -> str:
+    """Zufällige Stimme aus `tts.voices`; nie zweimal hintereinander dieselbe."""
+    voices = tcfg.get("voices") or [tcfg["voice"]]
+    choices = [v for v in voices if v != last] or voices
+    return random.choice(choices)
+
+
+def make_video(story: Story, cfg: dict, workdir: Path, voice: str | None = None) -> tuple[Path, float]:
     tcfg, vcfg = cfg["tts"], cfg["video"]
-    voice, rate, pitch = tcfg["voice"], tcfg.get("rate", "+0%"), tcfg.get("pitch", "+0Hz")
+    voice = voice or pick_voice(tcfg)
+    rate, pitch = tcfg.get("rate", "+0%"), tcfg.get("pitch", "+0Hz")
+    max_gap = float(tcfg.get("max_pause", 0.14))
+    log.info("Stimme: %s", voice)
 
     parts: list[Path] = []
     word_lists: list[list[tts.Word]] = []
     if tcfg.get("read_title", True):
         p = workdir / "title.mp3"
-        word_lists.append(tts.synthesize(prepare_for_speech(story.title), p, voice, rate, pitch))
-        parts.append(p)
+        words = tts.synthesize(prepare_for_speech(story.title), p, voice, rate, pitch)
+        tight = p.with_name("title_tight.wav")
+        word_lists.append(video.tighten_pauses(p, tight, words, max_gap))
+        parts.append(tight)
     p = workdir / "body.mp3"
-    word_lists.append(tts.synthesize(prepare_for_speech(story.body), p, voice, rate, pitch))
-    parts.append(p)
+    words = tts.synthesize(prepare_for_speech(story.body), p, voice, rate, pitch)
+    tight = p.with_name("body_tight.wav")
+    word_lists.append(video.tighten_pauses(p, tight, words, max_gap))
+    parts.append(tight)
 
     narration = workdir / "narration.wav"
     starts = video.build_narration(parts, narration)
@@ -154,9 +169,10 @@ def run_once(cfg: dict, *, upload: bool = True, dry_run: bool = False) -> Path |
         log.info("Story: r/%s – %s (%d Wörter, %d Upvotes)", story.subreddit, story.title,
                  story.words, story.score)
 
+        voice = pick_voice(cfg["tts"], state.last_voice)
         try:
             with tempfile.TemporaryDirectory(prefix="rvb_") as tmp:
-                out, duration = make_video(story, cfg, Path(tmp))
+                out, duration = make_video(story, cfg, Path(tmp), voice)
         except StoryTooLong as exc:
             log.info("Story zu lang fürs Video (%s) – nächste", exc)
             skipped.add(story.id)
@@ -165,6 +181,8 @@ def run_once(cfg: dict, *, upload: bool = True, dry_run: bool = False) -> Path |
             continue
 
         log.info("Video fertig: %s", out)
+        if not dry_run:
+            state.set_last_voice(voice)
         if dry_run or not uploaders:
             if not dry_run:
                 state.mark_used(story.id, subreddit=story.subreddit, title=story.title, video=str(out))

@@ -21,6 +21,14 @@ class State:
     def is_used(self, post_id: str) -> bool:
         return post_id in self.data["used"]
 
+    @property
+    def last_voice(self) -> str | None:
+        return self.data.get("last_voice")
+
+    def set_last_voice(self, voice: str) -> None:
+        self.data["last_voice"] = voice
+        self.save()
+
     def mark_used(self, post_id: str, **info) -> None:
         self.data["used"][post_id] = {"ts": int(time.time()), **info}
         self.save()
