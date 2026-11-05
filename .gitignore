@@ -8,3 +8,4 @@ token*.json
 .tiktok_refresh_token
 /Testvideo*.mp4
 /Test_*.mp4
+auth_url.txt

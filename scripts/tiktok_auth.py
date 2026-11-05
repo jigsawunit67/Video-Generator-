@@ -57,7 +57,11 @@ def main() -> None:
     result: dict = {}
 
     if args.manual:
-        print("1) Öffne diese Adresse im Browser und melde dich bei TikTok an:\n")
+        url_file = Path(__file__).resolve().parent.parent / "auth_url.txt"
+        url_file.write_text(auth_url, encoding="utf-8")
+        print("1) Öffne die Datei auth_url.txt im Editor (Explorer links), markiere ALLES,")
+        print("   kopiere es, öffne es in einem neuen Browser-Tab und melde dich bei TikTok an.")
+        print("   (Alternativ ist die Adresse hier:)\n")
         print(auth_url, "\n")
         print("2) Nach dem Erlauben zeigt der Browser eine Fehlerseite (localhost nicht erreichbar).")
         print("   Das ist normal! Kopiere die KOMPLETTE Adresse aus der Adressleiste")
