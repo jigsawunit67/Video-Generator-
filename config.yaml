@@ -92,7 +92,7 @@ upload:
     # PUBLIC_TO_EVERYONE | MUTUAL_FOLLOW_FRIENDS | FOLLOWER_OF_CREATOR | SELF_ONLY
     # Ohne TikTok-App-Audit ist nur SELF_ONLY (privat) möglich – der Bot fällt dann automatisch darauf zurück.
     privacy: PUBLIC_TO_EVERYONE
-    caption_template: "{title} 😳 #reddit #redditstories #storytime #fyp"
+    caption_template: "{title} 😳 (r/{subreddit}, u/{author}) #reddit #redditstories #storytime #fyp"
     disable_comment: false
     disable_duet: false
     disable_stitch: false
