@@ -1,0 +1,71 @@
+# ============================================================
+#  Reddit Story Video Bot – Konfiguration
+# ============================================================
+
+reddit:
+  # Aus diesen Subreddits werden Storys geholt (zufällige Reihenfolge)
+  subreddits:
+    - AmItheAsshole
+    - tifu
+    - confession
+    - TrueOffMyChest
+    - pettyrevenge
+    - MaliciousCompliance
+    - entitledparents
+  sort: top            # top | hot | new
+  time_filter: day     # nur bei "top": hour | day | week | month | year | all
+  limit: 50            # wie viele Posts pro Subreddit angeschaut werden
+  min_score: 500       # Mindest-Upvotes
+  min_words: 120       # zu kurze Storys überspringen
+  max_words: 420       # ~2:45 min bei normaler Sprechgeschwindigkeit
+  allow_nsfw: false
+  # Posts mit diesen Wörtern im Titel/Text werden übersprungen
+  blocked_words: ["update:", "[meta]", "suicide", "self-harm"]
+
+tts:
+  # Stimmen auflisten:  edge-tts --list-voices
+  # Englische Storys -> englische Stimme. Für deutsche Subreddits z.B. de-DE-ConradNeural / de-DE-KatjaNeural
+  voice: en-US-ChristopherNeural
+  rate: "+15%"         # schneller = mehr Retention
+  pitch: "+0Hz"
+  read_title: true     # Titel am Anfang vorlesen
+
+video:
+  width: 1080
+  height: 1920
+  fps: 30
+  max_duration: 175    # Sekunden. YouTube Shorts erlaubt bis 180 s
+  backgrounds_dir: assets/backgrounds
+  music_dir: assets/music   # optional: leise Hintergrundmusik
+  music_volume: 0.08
+  output_dir: output
+  # Wenn keine eigenen Clips vorhanden sind, wird ein generierter Hintergrund benutzt
+  fallback_background: true
+  crf: 23
+  preset: veryfast
+
+subtitles:
+  font: "Arial Black"  # Fallback-Font wird von libass automatisch gewählt
+  font_size: 84
+  words_per_line: 3
+  primary_color: "&H00FFFFFF"   # ASS-Format &HAABBGGRR (weiß)
+  highlight_color: "&H0000F0FF" # gelb – aktuelles Wort
+  outline: 6
+  margin_v: 0          # 0 = vertikal mittig
+
+upload:
+  platform: youtube    # youtube | none (nur rendern)
+  privacy: public      # public | unlisted | private
+  category_id: "24"    # 24 = Entertainment
+  made_for_kids: false
+  title_template: "{title} #shorts #reddit"
+  description_template: |
+    r/{subreddit} story 📖
+
+    Original post by u/{author}: {url}
+
+    #reddit #redditstories #askreddit #storytime #shorts
+  tags: ["reddit", "reddit stories", "storytime", "shorts", "aita"]
+  delete_after_upload: true
+
+state_file: data/used_posts.json

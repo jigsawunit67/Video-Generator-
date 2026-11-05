@@ -1,0 +1,69 @@
+name: Reddit-Story-Video veröffentlichen
+
+on:
+  schedule:
+    # 2x täglich (Zeiten in UTC): 11:17 und 17:47 UTC = 12:17 / 18:47 Uhr deutscher Winterzeit
+    - cron: "17 11 * * *"
+    - cron: "47 17 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Nur rendern, nicht hochladen (Video als Artefakt herunterladbar)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # um data/used_posts.json zurück ins Repo zu schreiben
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: ffmpeg + Schriftarten installieren
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
+
+      - run: pip install -r requirements.txt
+
+      - name: Video erstellen und hochladen
+        env:
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_USER_AGENT: ${{ secrets.REDDIT_USER_AGENT }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          BACKGROUND_URLS: ${{ secrets.BACKGROUND_URLS }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            python -m reddit_video_bot run --dry-run
+          else
+            python -m reddit_video_bot run
+          fi
+
+      - name: Video als Artefakt speichern (nur Testlauf)
+        if: ${{ inputs.dry_run }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: video
+          path: output/*.mp4
+
+      - name: Liste benutzter Posts speichern
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/used_posts.json || true
+          git diff --cached --quiet || git commit -m "Benutzte Reddit-Posts aktualisiert"
+          git push
